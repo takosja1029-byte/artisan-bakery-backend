@@ -1,5 +1,6 @@
 const https = require("https");
 const crypto = require("crypto");
+const FormData = require("form-data");
 
 const MERCHANT_ID = "ec476501";
 
@@ -18,37 +19,31 @@ module.exports = async (req, res) => {
 
   const reqTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
   const amountStr = parseFloat(amount).toFixed(2);
-  const currency = "USD";
-  const paymentOption = "abapay_deeplink";
 
-  // Hash = HMAC SHA512 of concatenated values in exact order
-  // Only include fields you are sending
-  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + paymentOption + currency;
+  // Exact hash string order from PayWay docs (only include fields being sent)
+  // req_time + merchant_id + tran_id + amount + payment_option + currency
+  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + "" + "" + "" + "" + "" + "" + "" + "" + "" + "abapay_deeplink" + "" + "" + "" + "" + "USD" + "" + "";
 
   const hash = crypto
     .createHmac("sha512", publicKey)
     .update(hashInput)
     .digest("base64");
 
-  const formData = new URLSearchParams({
-    req_time: reqTime,
-    merchant_id: MERCHANT_ID,
-    tran_id: orderId,
-    amount: amountStr,
-    payment_option: paymentOption,
-    currency: currency,
-    return_url: Buffer.from("https://artisan-bakery-backend.vercel.app").toString("base64"),
-    hash,
-  }).toString();
+  // Must use multipart/form-data
+  const form = new FormData();
+  form.append("req_time", reqTime);
+  form.append("merchant_id", MERCHANT_ID);
+  form.append("tran_id", orderId);
+  form.append("amount", amountStr);
+  form.append("payment_option", "abapay_deeplink");
+  form.append("currency", "USD");
+  form.append("hash", hash);
 
   const options = {
     hostname: "checkout-sandbox.payway.com.kh",
     path: "/api/payment-gateway/v1/payments/purchase",
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Content-Length": Buffer.byteLength(formData),
-    },
+    headers: form.getHeaders(),
   };
 
   const request = https.request(options, (response) => {
@@ -62,6 +57,5 @@ module.exports = async (req, res) => {
   });
 
   request.on("error", (e) => res.status(500).json({ error: e.message }));
-  request.write(formData);
-  request.end();
+  form.pipe(request);
 };
