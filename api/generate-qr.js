@@ -25,44 +25,47 @@ module.exports = async (req, res) => {
 
   const reqTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
   const amountStr = parseFloat(amount).toFixed(2);
-  const sigString = `merchant_id=${MERCHANT_ID}&tran_id=${orderId}&amount=${amountStr}&payment_option=abapay_deeplink&req_time=${reqTime}`;
+  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + "abapay_deeplink";
   
   let hash;
   try {
-    hash = generateSignature(sigString, privateKey);
+    hash = generateSignature(hashInput, privateKey);
   } catch(e) {
     return res.status(500).json({ error: "Signature failed: " + e.message });
   }
 
-  const payload = JSON.stringify({
+  const formData = new URLSearchParams({
+    req_time: reqTime,
     merchant_id: MERCHANT_ID,
     tran_id: orderId,
     amount: amountStr,
     payment_option: "abapay_deeplink",
-    req_time: reqTime,
-    hash,
-    return_url: "https://artisan-bakery-backend.vercel.app",
     currency: "USD",
-  });
+    return_url: "https://artisan-bakery-backend.vercel.app",
+    hash,
+  }).toString();
 
   const options = {
     hostname: "checkout-sandbox.payway.com.kh",
     path: "/api/payment-gateway/v1/payments/purchase",
     method: "POST",
-    headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Length": Buffer.byteLength(formData),
+    },
   };
 
   const request = https.request(options, (response) => {
     let data = "";
     response.on("data", (chunk) => { data += chunk; });
-   response.on("end", () => {
-  console.log("PayWay response:", data);
-  try { res.json(JSON.parse(data)); }
+    response.on("end", () => {
+      console.log("PayWay response:", data);
+      try { res.json(JSON.parse(data)); }
       catch (e) { res.status(500).json({ error: "Invalid PayWay response", raw: data }); }
     });
   });
 
   request.on("error", (e) => res.status(500).json({ error: e.message }));
-  request.write(payload);
+  request.write(formData);
   request.end();
 };
