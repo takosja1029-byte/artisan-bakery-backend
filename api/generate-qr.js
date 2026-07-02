@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
 
   const reqTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
   const amountStr = parseFloat(amount).toFixed(2);
-  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + "abapay_deeplink";
+  const hashInput = orderId + amountStr + MERCHANT_ID + reqTime;
   
   let hash;
   try {
