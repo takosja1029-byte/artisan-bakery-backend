@@ -4,7 +4,10 @@ const crypto = require("crypto");
 const MERCHANT_ID = "ec476501";
 
 function generateSignature(data, privateKey) {
-  return crypto.createHmac("sha512", privateKey).update(data).digest("base64");
+  const sign = crypto.createSign("SHA256");
+  sign.update(data);
+  sign.end();
+  return sign.sign(privateKey, "base64");
 }
 
 module.exports = async (req, res) => {
@@ -22,8 +25,14 @@ module.exports = async (req, res) => {
 
   const reqTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
   const amountStr = parseFloat(amount).toFixed(2);
-  const sigString = `${MERCHANT_ID}${reqTime}${orderId}${amountStr}abapay_deeplink`;
-  const hash = generateSignature(sigString, privateKey);
+  const sigString = `merchant_id=${MERCHANT_ID}&tran_id=${orderId}&amount=${amountStr}&payment_option=abapay_deeplink&req_time=${reqTime}`;
+  
+  let hash;
+  try {
+    hash = generateSignature(sigString, privateKey);
+  } catch(e) {
+    return res.status(500).json({ error: "Signature failed: " + e.message });
+  }
 
   const payload = JSON.stringify({
     merchant_id: MERCHANT_ID,
@@ -32,7 +41,7 @@ module.exports = async (req, res) => {
     payment_option: "abapay_deeplink",
     req_time: reqTime,
     hash,
-    return_url: "https://artisanbakery.vercel.app",
+    return_url: "https://artisan-bakery-backend.vercel.app",
     currency: "USD",
   });
 
@@ -48,7 +57,7 @@ module.exports = async (req, res) => {
     response.on("data", (chunk) => { data += chunk; });
     response.on("end", () => {
       try { res.json(JSON.parse(data)); }
-      catch (e) { res.status(500).json({ error: "Invalid PayWay response" }); }
+      catch (e) { res.status(500).json({ error: "Invalid PayWay response", raw: data }); }
     });
   });
 
