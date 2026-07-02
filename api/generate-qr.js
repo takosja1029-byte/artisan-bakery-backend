@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { amount, orderId } = req.body;
-  const publicKey = process.env.PAYWAY_PRIVATE_KEY;
+  const publicKey = "1ced0af59b4ec176596382915e23a242014d6c8f";
 
   if (!publicKey) return res.status(500).json({ error: "Key not configured" });
 
@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
 
   // Exact hash string order from PayWay docs (only include fields being sent)
   // req_time + merchant_id + tran_id + amount + payment_option + currency
-  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + "" + "" + "" + "" + "" + "" + "" + "" + "" + "abapay_deeplink" + "" + "" + "" + "" + "USD" + "" + "";
+  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + "abapay_deeplink" + "USD";
 
   const hash = crypto
     .createHmac("sha512", publicKey)
