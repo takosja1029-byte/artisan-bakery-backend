@@ -55,8 +55,9 @@ module.exports = async (req, res) => {
   const request = https.request(options, (response) => {
     let data = "";
     response.on("data", (chunk) => { data += chunk; });
-    response.on("end", () => {
-      try { res.json(JSON.parse(data)); }
+   response.on("end", () => {
+  console.log("PayWay response:", data);
+  try { res.json(JSON.parse(data)); }
       catch (e) { res.status(500).json({ error: "Invalid PayWay response", raw: data }); }
     });
   });
