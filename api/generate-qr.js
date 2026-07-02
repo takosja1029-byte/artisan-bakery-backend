@@ -3,13 +3,6 @@ const crypto = require("crypto");
 
 const MERCHANT_ID = "ec476501";
 
-function generateSignature(data, privateKey) {
-  const sign = crypto.createSign("SHA256");
-  sign.update(data);
-  sign.end();
-  return sign.sign(privateKey, "base64");
-}
-
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -19,29 +12,32 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { amount, orderId } = req.body;
-  const privateKey = process.env.PAYWAY_PRIVATE_KEY;
+  const publicKey = process.env.PAYWAY_PRIVATE_KEY;
 
-  if (!privateKey) return res.status(500).json({ error: "Private key not configured" });
+  if (!publicKey) return res.status(500).json({ error: "Key not configured" });
 
   const reqTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
   const amountStr = parseFloat(amount).toFixed(2);
-  const hashInput = orderId + amountStr + MERCHANT_ID + reqTime;
-  
-  let hash;
-  try {
-    hash = generateSignature(hashInput, privateKey);
-  } catch(e) {
-    return res.status(500).json({ error: "Signature failed: " + e.message });
-  }
+  const currency = "USD";
+  const paymentOption = "abapay_deeplink";
+
+  // Hash = HMAC SHA512 of concatenated values in exact order
+  // Only include fields you are sending
+  const hashInput = reqTime + MERCHANT_ID + orderId + amountStr + paymentOption + currency;
+
+  const hash = crypto
+    .createHmac("sha512", publicKey)
+    .update(hashInput)
+    .digest("base64");
 
   const formData = new URLSearchParams({
     req_time: reqTime,
     merchant_id: MERCHANT_ID,
     tran_id: orderId,
     amount: amountStr,
-    payment_option: "abapay_deeplink",
-    currency: "USD",
-    return_url: "https://artisan-bakery-backend.vercel.app",
+    payment_option: paymentOption,
+    currency: currency,
+    return_url: Buffer.from("https://artisan-bakery-backend.vercel.app").toString("base64"),
     hash,
   }).toString();
 
