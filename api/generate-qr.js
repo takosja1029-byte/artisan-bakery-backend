@@ -11,20 +11,18 @@ module.exports = async (req, res) => {
   const { amount, orderId } = req.body;
 
   try {
-    const optionalData = {
-      currency: khqrData.currency.usd,
-      amount: parseFloat(amount),
-      billNumber: orderId,
-      storeLabel: "Artisan Bakery",
-      expirationTimestamp: Date.now() + (10 * 60 * 1000),
-    };
-
     const individualInfo = new IndividualInfo(
-      "086201512@wing",
-      khqrData.currency.usd,
+      "wing_khqr@wing",
       "SANCHETRA VA",
-      "PHNOM PENH",
-      optionalData
+      "Phnom Penh",
+      {
+        currency: khqrData.currency.usd,
+        amount: parseFloat(amount),
+        billNumber: orderId,
+        storeLabel: "Artisan Bakery",
+        mobileNumber: "0976737470",
+        expirationTimestamp: Date.now() + (10 * 60 * 1000),
+      }
     );
 
     const khqr = new BakongKHQR();
