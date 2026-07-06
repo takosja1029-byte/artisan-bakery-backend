@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
     };
 
     const individualInfo = new IndividualInfo(
-      "0976737470@wing",
+      "086201512@wing",
       khqrData.currency.usd,
       "SANCHETRA VA",
       "PHNOM PENH",
