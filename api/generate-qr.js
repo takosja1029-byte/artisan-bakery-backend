@@ -1,4 +1,11 @@
-const { BakongKHQR, khqrData, IndividualInfo } = require("bakong-khqr");
+const https = require("https");
+const crypto = require("crypto");
+
+const MERCHANT_ID = "ec476501";
+
+function generateSignature(data, privateKey) {
+  return crypto.createHmac("sha512", privateKey).update(data).digest("base64");
+}
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -9,35 +16,71 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { amount, orderId } = req.body;
+  const privateKey = process.env.PAYWAY_PRIVATE_KEY;
 
-  try {
-    const individualInfo = new IndividualInfo(
-      "0976737470@acleda",
-      "SANCHETRA VA",
-      "Phnom Penh",
-      {
-        currency: khqrData.currency.usd,
-        amount: parseFloat(amount),
-        billNumber: orderId,
-        storeLabel: "Artisan Bakery",
-        expirationTimestamp: Date.now() + (10 * 60 * 1000),
+  const reqTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+  const tranId = orderId;
+  const firstName = "Artisan";
+  const lastName = "Customer";
+  const email = "customer@artisanbakery.com";
+  const phone = "0976737470";
+  const purchaseType = "purchase";
+  const paymentOption = "abapay_khqr";
+  const currency = "USD";
+  const amountStr = parseFloat(amount).toFixed(2);
+  const lifetime = 10;
+
+  const hashString =
+    reqTime + MERCHANT_ID + tranId + amountStr +
+    firstName + lastName + email + phone +
+    purchaseType + paymentOption + currency +
+    lifetime;
+
+  const hash = generateSignature(hashString, privateKey);
+
+  const payload = JSON.stringify({
+    req_time: reqTime,
+    merchant_id: MERCHANT_ID,
+    tran_id: tranId,
+    first_name: firstName,
+    last_name: lastName,
+    email: email,
+    phone: phone,
+    amount: parseFloat(amountStr),
+    purchase_type: purchaseType,
+    payment_option: paymentOption,
+    currency: currency,
+    lifetime: lifetime,
+    qr_image_template: "template3_color",
+    hash: hash,
+  });
+
+  const options = {
+    hostname: "checkout-sandbox.payway.com.kh",
+    path: "/api/payment-gateway/v1/payments/generate-qr",
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) },
+  };
+
+  const request = https.request(options, (response) => {
+    let data = "";
+    response.on("data", (chunk) => { data += chunk; });
+    response.on("end", () => {
+      try {
+        const result = JSON.parse(data);
+        console.log("PayWay QR response:", JSON.stringify(result));
+        if (result.status?.code === "00" && result.qrString) {
+          res.json({ qrString: result.qrString, qrImage: result.qrString, status: result.status });
+        } else {
+          res.status(500).json({ error: result.status?.message || "QR generation failed", raw: result });
+        }
+      } catch (e) {
+        res.status(500).json({ error: "Invalid response from PayWay", raw: data });
       }
-    );
+    });
+  });
 
-    const khqr = new BakongKHQR();
-    const response = khqr.generateIndividual(individualInfo);
-    console.log("KHQR response:", JSON.stringify(response));
-
-    if (response && response.data && response.data.qr) {
-      return res.json({
-        qrString: response.data.qr,
-        qrImage: response.data.qr,
-        status: { code: "00", message: "Success!" }
-      });
-    } else {
-      return res.status(500).json({ error: "Failed to generate KHQR", raw: response });
-    }
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
+  request.on("error", (e) => res.status(500).json({ error: e.message }));
+  request.write(payload);
+  request.end();
 };
