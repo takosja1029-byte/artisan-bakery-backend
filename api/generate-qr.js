@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
 
   try {
     const individualInfo = new IndividualInfo(
-      "wing_khqr@wing",
+      "0976737470@acleda",
       "SANCHETRA VA",
       "Phnom Penh",
       {
@@ -20,7 +20,6 @@ module.exports = async (req, res) => {
         amount: parseFloat(amount),
         billNumber: orderId,
         storeLabel: "Artisan Bakery",
-        mobileNumber: "0976737470",
         expirationTimestamp: Date.now() + (10 * 60 * 1000),
       }
     );
