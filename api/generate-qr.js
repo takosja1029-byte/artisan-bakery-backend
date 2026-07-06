@@ -27,14 +27,30 @@ module.exports = async (req, res) => {
   const purchaseType = "purchase";
   const paymentOption = "abapay_khqr";
   const currency = "USD";
-  const amountStr = parseFloat(amount).toFixed(2);
+  const amountVal = parseFloat(amount);
   const lifetime = 10;
+  const qrTemplate = "template3_color";
 
   const hashString =
-    reqTime + MERCHANT_ID + tranId + amountStr +
-    firstName + lastName + email + phone +
-    purchaseType + paymentOption + currency +
-    lifetime;
+    reqTime +
+    MERCHANT_ID +
+    tranId +
+    amountVal +
+    "" +
+    firstName +
+    lastName +
+    email +
+    phone +
+    purchaseType +
+    paymentOption +
+    "" +
+    "" +
+    currency +
+    "" +
+    "" +
+    "" +
+    lifetime +
+    qrTemplate;
 
   const hash = generateSignature(hashString, privateKey);
 
@@ -46,12 +62,12 @@ module.exports = async (req, res) => {
     last_name: lastName,
     email: email,
     phone: phone,
-    amount: parseFloat(amountStr),
+    amount: amountVal,
     purchase_type: purchaseType,
     payment_option: paymentOption,
     currency: currency,
     lifetime: lifetime,
-    qr_image_template: "template3_color",
+    qr_image_template: qrTemplate,
     hash: hash,
   });
 
