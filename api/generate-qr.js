@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
       try {
         const result = JSON.parse(data);
         console.log("PayWay QR response:", JSON.stringify(result));
-        if (result.status?.code === "00" && result.qrString) {
+       if (result.qrString) {
           res.json({ qrString: result.qrString, qrImage: result.qrString, status: result.status });
         } else {
           res.status(500).json({ error: result.status?.message || "QR generation failed", raw: result });
